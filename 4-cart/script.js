@@ -18,36 +18,66 @@ const promoBtn = document.getElementById("promo-btn");
 const clearBtn = document.getElementById("clear-btn");
 
 function renderProducts() {
+  productsEl.innerHTML = "";
+
   products.forEach((p) => {
     const card = document.createElement("div");
     card.className = "product";
-    card.innerHTML = `<h3>${p.name}</h3><p>${p.price} ₽</p>`;
+
+    const title = document.createElement("h3");
+    title.textContent = p.name;
+
+    const price = document.createElement("p");
+    price.textContent = `${p.price} ₽`;
+
     const btn = document.createElement("button");
     btn.textContent = "В корзину";
-    btn.addEventListener("click", addToCart);
-    card.appendChild(btn);
+
+    btn.addEventListener("click", () => addToCart(p.id));
+
+    card.append(title, price, btn);
     productsEl.appendChild(card);
   });
 }
 
 function addToCart(id) {
   const product = products.find((p) => p.id === id);
-  if (!product) {
-    return;
+
+  if (!product) return;
+
+  const item = cart.find((i) => i.id === id);
+
+  if (item) {
+    item.qty++;
+  } else {
+    cart.push({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      qty: 1,
+    });
   }
-  cart.push({ id: product.id, name: product.name, price: product.price, qty: 1 });
+
   renderCart();
 }
 
 function increaseQty(id) {
   const item = cart.find((i) => i.id === id);
-  item.qty;
+
+  if (item) {
+    item.qty++;
+  }
+
   renderCart();
 }
 
 function decreaseQty(id) {
   const item = cart.find((i) => i.id === id);
-  item.qty--;
+
+  if (item && item.qty > 1) {
+    item.qty--;
+  }
+
   renderCart();
 }
 
@@ -57,44 +87,75 @@ function removeItem(id) {
 }
 
 function applyPromo() {
-  if ((promoInput.value = "SALE10")) {
-    discount = 0.1;
-  }
+  const code = promoInput.value.trim().toUpperCase();
+
+  discount = code === "SALE10" ? 0.1 : 0;
+
   renderCart();
 }
 
 function clearCart() {
-  cart.splice(0, 1);
+  cart = [];
+  discount = 0;
+  promoInput.value = "";
+
   renderCart();
 }
 
 function renderCart() {
   cartItemsEl.innerHTML = "";
-  let total = "";
+
+  let total = 0;
+  let totalQty = 0;
+
   cart.forEach((item) => {
-    const lineTotal = item.price;
+    const lineTotal = item.price * item.qty;
+
     const li = document.createElement("li");
     li.className = "cart-item";
-    li.innerHTML = `<span>${item.name}</span>
-      <button class="qty-btn" data-act="dec">−</button>
-      <span class="qty">${item.qty}</span>
-      <button class="qty-btn" data-act="inc">+</button>
-      <span class="line">${lineTotal} ₽</span>
-      <button class="remove">✕</button>`;
-    li.querySelector('[data-act="inc"]').addEventListener("click", () => increaseQty(item.id));
-    li.querySelector('[data-act="dec"]').addEventListener("click", () => decreaseQty(item.id));
-    li.querySelector(".remove").addEventListener("click", () => removeItem(item.id));
+
+    const name = document.createElement("span");
+    name.textContent = item.name;
+
+    const decBtn = document.createElement("button");
+    decBtn.className = "qty-btn";
+    decBtn.textContent = "−";
+    decBtn.setAttribute("aria-label", `Уменьшить количество: ${item.name}`);
+    decBtn.addEventListener("click", () => decreaseQty(item.id));
+
+    const qty = document.createElement("span");
+    qty.className = "qty";
+    qty.textContent = item.qty;
+
+    const incBtn = document.createElement("button");
+    incBtn.className = "qty-btn";
+    incBtn.textContent = "+";
+    incBtn.setAttribute("aria-label", `Увеличить количество: ${item.name}`);
+    incBtn.addEventListener("click", () => increaseQty(item.id));
+
+    const line = document.createElement("span");
+    line.className = "line";
+    line.textContent = `${lineTotal} ₽`;
+
+    const removeBtn = document.createElement("button");
+    removeBtn.className = "remove";
+    removeBtn.textContent = "✕";
+    removeBtn.setAttribute("aria-label", `Удалить: ${item.name}`);
+    removeBtn.addEventListener("click", () => removeItem(item.id));
+
+    li.append(name, decBtn, qty, incBtn, line, removeBtn);
     cartItemsEl.appendChild(li);
-    total += item.price * item.qty;
+
+    total += lineTotal;
+    totalQty += item.qty;
   });
 
-  if (discount) {
-    total = total - total * discount;
-  }
+  const finalTotal = total * (1 - discount);
 
-  badgeEl.textContent = cart.length;
-  totalEl.textContent = total;
-  emptyMsg.hidden = true;
+  badgeEl.textContent = totalQty;
+  totalEl.textContent = Number(finalTotal.toFixed(2));
+
+  emptyMsg.hidden = cart.length !== 0;
 }
 
 promoBtn.addEventListener("click", applyPromo);
